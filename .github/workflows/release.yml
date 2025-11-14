@@ -170,7 +170,7 @@ jobs:
             chmod +x msa_exporter-*
 
             # Запустите
-            ./msa_exporter-* -hostname msa.example.com -login username -password password
+            ./msa_exporter-* --hostname msa.example.com --login username --password password
             ```
 
             **Docker:**
@@ -186,12 +186,12 @@ jobs:
 
             ### Параметры
 
-            - `-hostname` - MSA storage hostname (обязательно)
-            - `-login` - MSA storage login (обязательно)
-            - `-password` - MSA storage password (обязательно)
-            - `-port` - Exporter port (по умолчанию: 8000)
-            - `-interval` - Интервал сбора метрик в секундах (по умолчанию: 60)
-            - `-timeout` - Timeout в секундах (по умолчанию: 60)
+            - `--hostname` - MSA storage hostname (обязательно)
+            - `--login` - MSA storage login (обязательно)
+            - `--password` - MSA storage password (обязательно)
+            - `--port` - Exporter port (по умолчанию: 8000)
+            - `--interval` - Интервал сбора метрик в секундах (по умолчанию: 60)
+            - `--timeout` - Timeout в секундах (по умолчанию: 60)
 
             ### Характеристики
 

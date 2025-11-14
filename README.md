@@ -36,7 +36,7 @@ docker run -e HOST=msa_hostname -e LOGIN=username -e PASSWORD=password -p 8000:8
 
 ```bash
 # Использование флагов
-./msa_exporter -hostname msa_san_hostname -login msa_san_username -password msa_san_password -port 8000 -interval 60 -timeout 60
+./msa_exporter --hostname msa_san_hostname --login msa_san_username --password msa_san_password --port 8000 --interval 60 --timeout 60
 
 # Использование позиционных аргументов (обратная совместимость)
 ./msa_exporter msa_san_hostname msa_san_username msa_san_password
@@ -44,12 +44,12 @@ docker run -e HOST=msa_hostname -e LOGIN=username -e PASSWORD=password -p 8000:8
 
 ### Параметры
 
-- `-hostname string` - Имя хоста MSA storage (обязательно)
-- `-login string` - Логин для MSA storage (обязательно)
-- `-password string` - Пароль для MSA storage (обязательно)
-- `-port int` - Порт экспортера (по умолчанию: 8000)
-- `-interval int` - Интервал сбора метрик в секундах (по умолчанию: 60)
-- `-timeout int` - Таймаут сбора в секундах (по умолчанию: 60)
+- `--hostname string` - Имя хоста MSA storage (обязательно)
+- `--login string` - Логин для MSA storage (обязательно)
+- `--password string` - Пароль для MSA storage (обязательно)
+- `--port int` - Порт экспортера (по умолчанию: 8000)
+- `--interval int` - Интервал сбора метрик в секундах (по умолчанию: 60)
+- `--timeout int` - Таймаут сбора в секундах (по умолчанию: 60)
 
 ## Метрики
 
@@ -157,7 +157,7 @@ docker run -e HOST=msa_hostname -e LOGIN=username -e PASSWORD=password -p 8000:8
 ### Ключевые улучшения:
 
 1. **Нет зависимостей**: Один статический бинарный файл, не требуется Python runtime или pip пакеты
-2. **Гибкие аргументы**: Поддержка флагов `-hostname` и позиционных аргументов для обратной совместимости
+2. **Гибкие аргументы**: Поддержка флагов `--hostname` и позиционных аргументов для обратной совместимости
 3. **Автоматическое управление зависимостями**: Go модули автоматически управляют всеми зависимостями при сборке
 
 ## Тестирование

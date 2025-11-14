@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.25.4-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /build
 
@@ -38,4 +38,4 @@ USER exporter
 
 EXPOSE 8000
 
-CMD ./msa_exporter -hostname $HOST -login $LOGIN -password $PASSWORD
+CMD ./msa_exporter --hostname $HOST --login $LOGIN --password $PASSWORD
