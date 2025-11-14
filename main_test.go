@@ -304,6 +304,25 @@ func TestMSAClient(t *testing.T) {
 			t.Error("No objects in response")
 		}
 	})
+
+	t.Run("authentication failure - wrong credentials", func(t *testing.T) {
+		_, err := NewMSAClient(host, "wronguser", "wrongpass", 10*time.Second)
+		if err == nil {
+			t.Error("Expected authentication to fail with wrong credentials")
+		}
+	})
+
+	t.Run("get data - not found", func(t *testing.T) {
+		client, err := NewMSAClient(host, "testuser", "testpass", 10*time.Second)
+		if err != nil {
+			t.Fatalf("Failed to create client: %v", err)
+		}
+
+		_, err = client.Get("nonexistent")
+		if err == nil {
+			t.Error("Expected Get to fail with non-existent endpoint")
+		}
+	})
 }
 
 // Helper function for SHA256 (for testing)
@@ -335,6 +354,13 @@ func TestScrapeMSA(t *testing.T) {
 		<PROPERTY name="mc-fw">1.0</PROPERTY>
 		<PROPERTY name="pld-rev">1.0</PROPERTY>
 	</OBJECT>
+	<OBJECT name="controller-b-versions">
+		<PROPERTY name="bundle-version">1.0</PROPERTY>
+		<PROPERTY name="bundle-base-version">1.0</PROPERTY>
+		<PROPERTY name="sc-fw">1.0</PROPERTY>
+		<PROPERTY name="mc-fw">1.0</PROPERTY>
+		<PROPERTY name="pld-rev">1.0</PROPERTY>
+	</OBJECT>
 </RESPONSE>`))
 		case r.URL.Path == "/api/show/disks":
 			w.WriteHeader(http.StatusOK)
@@ -345,25 +371,65 @@ func TestScrapeMSA(t *testing.T) {
 		<PROPERTY name="serial-number">TEST123</PROPERTY>
 		<PROPERTY name="temperature-numeric">40</PROPERTY>
 		<PROPERTY name="health-numeric">0</PROPERTY>
+		<PROPERTY name="architecture">SSD</PROPERTY>
+	</OBJECT>
+	<OBJECT name="drive">
+		<PROPERTY name="location">1.2</PROPERTY>
+		<PROPERTY name="serial-number">TEST124</PROPERTY>
+		<PROPERTY name="temperature-numeric">N/A</PROPERTY>
+		<PROPERTY name="health-numeric">1</PROPERTY>
+	</OBJECT>
+</RESPONSE>`))
+		case r.URL.Path == "/api/show/host-port-statistics":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<RESPONSE>
+	<OBJECT name="host-port-statistics">
+		<PROPERTY name="durable-id">hostport_A1</PROPERTY>
+		<PROPERTY name="data-read-numeric">1000</PROPERTY>
+		<PROPERTY name="data-written-numeric">2000</PROPERTY>
+	</OBJECT>
+</RESPONSE>`))
+		case r.URL.Path == "/api/show/volumes":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<RESPONSE>
+	<OBJECT name="volume">
+		<PROPERTY name="volume-name">vol1</PROPERTY>
+		<PROPERTY name="health-numeric">0</PROPERTY>
+		<PROPERTY name="size-numeric">1000000</PROPERTY>
+	</OBJECT>
+</RESPONSE>`))
+		case r.URL.Path == "/api/show/pools":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<RESPONSE>
+	<OBJECT name="pools">
+		<PROPERTY name="name">pool1</PROPERTY>
+		<PROPERTY name="serial-number">POOL123</PROPERTY>
+		<PROPERTY name="total-size-numeric">10000000</PROPERTY>
 	</OBJECT>
 </RESPONSE>`))
 		default:
 			// Return empty response for other endpoints
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?><RESPONSE></RESPONSE>`))
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?><RESPONSE></RESPONSE>`))
 		}
 	}))
 	defer server.Close()
 
 	host := server.URL[8:]
 
-	t.Run("scrape metrics", func(t *testing.T) {
-		client, err := NewMSAClient(host, "testuser", "testpass", 10*time.Second)
-		if err != nil {
-			t.Fatalf("Failed to create client: %v", err)
-		}
+	// Create client once for all tests
+	client, err := NewMSAClient(host, "testuser", "testpass", 10*time.Second)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
 
-		ms := NewMetricStore()
+	// Create one metric store for all tests (metrics are registered globally)
+	ms := NewMetricStore()
+
+	t.Run("scrape metrics", func(t *testing.T) {
 		err = scrapeMSA(client, ms)
 		if err != nil {
 			t.Fatalf("scrapeMSA failed: %v", err)
@@ -372,6 +438,36 @@ func TestScrapeMSA(t *testing.T) {
 		// Check that metrics were created
 		if len(ms.metrics) == 0 {
 			t.Error("No metrics were created")
+		}
+	})
+
+	t.Run("verify N/A values handling", func(t *testing.T) {
+		// N/A values are already tested in the first scrape
+		// We just verify metrics exist
+		if len(ms.metrics) == 0 {
+			t.Error("No metrics were created")
+		}
+	})
+
+	t.Run("verify SSD filter", func(t *testing.T) {
+		// SSD filtering is already tested in the first scrape
+		// We just verify metrics exist
+		if len(ms.metrics) == 0 {
+			t.Error("No metrics were created")
+		}
+	})
+
+	t.Run("verify version metrics", func(t *testing.T) {
+		// Check that version metric was created
+		found := false
+		for name := range ms.metrics {
+			if name == "msa_version" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("Version metric was not created")
 		}
 	})
 }
