@@ -441,6 +441,14 @@ func main() {
 
 	// Start Prometheus HTTP server
 	http.Handle("/metrics", promhttp.Handler())
+
+	// Health check endpoint
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = fmt.Fprintf(w, `{"status":"healthy","service":"msa_exporter"}`)
+	})
+
 	go func() {
 		addr := fmt.Sprintf(":%d", *port)
 		if err := http.ListenAndServe(addr, nil); err != nil {

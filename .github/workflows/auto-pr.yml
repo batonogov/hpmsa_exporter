@@ -2,9 +2,9 @@ name: 🤖 Автоматический Pull Request
 
 on:
   push:
-    branches:
-      - "*"
-      - "!main"
+    branches-ignore:
+      - main
+      - master
 
 jobs:
   pull-request:

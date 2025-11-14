@@ -196,7 +196,5 @@ jobs:
             ### Протестировано на
 
             - HPE MSA 2060
-
-            ### Что нового
           files: artifacts/*/msa_exporter-*
           generate_release_notes: true
