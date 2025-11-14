@@ -32,3 +32,6 @@ go.work
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Binary files
+hpmsa_exporter

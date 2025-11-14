@@ -36,23 +36,23 @@ func TestMetricDefinitions(t *testing.T) {
 	metrics := getMetrics()
 
 	tests := []struct {
-		name            string
-		expectedSources int
+		name             string
+		expectedSources  int
 		checkDescription bool
 	}{
 		{
-			name:            "hostport_data_read",
-			expectedSources: 1,
+			name:             "hostport_data_read",
+			expectedSources:  1,
 			checkDescription: true,
 		},
 		{
-			name:            "disk_errors",
-			expectedSources: 16, // Multiple error types
+			name:             "disk_errors",
+			expectedSources:  16, // Multiple error types
 			checkDescription: true,
 		},
 		{
-			name:            "volume_tier_distribution",
-			expectedSources: 4, // Performance, Standard, Archive, RFC
+			name:             "volume_tier_distribution",
+			expectedSources:  4, // Performance, Standard, Archive, RFC
 			checkDescription: true,
 		},
 	}
@@ -258,17 +258,17 @@ func TestAllMetricsHaveValidPaths(t *testing.T) {
 	metrics := getMetrics()
 
 	validPaths := map[string]bool{
-		"host-port-statistics": true,
-		"disks":                true,
-		"disk-statistics":      true,
-		"volumes":              true,
-		"volume-statistics":    true,
-		"pool-statistics":      true,
-		"pools":                true,
-		"enclosures":           true,
-		"enclosure":            true,
+		"host-port-statistics":  true,
+		"disks":                 true,
+		"disk-statistics":       true,
+		"volumes":               true,
+		"volume-statistics":     true,
+		"pool-statistics":       true,
+		"pools":                 true,
+		"enclosures":            true,
+		"enclosure":             true,
 		"controller-statistics": true,
-		"system":               true,
+		"system":                true,
 	}
 
 	for name, metric := range metrics {
