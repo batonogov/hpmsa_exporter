@@ -471,3 +471,66 @@ func TestScrapeMSA(t *testing.T) {
 		}
 	})
 }
+
+func TestRecursiveFindProperty(t *testing.T) {
+	// Test that findProperty can find properties in nested objects (like resettable-statistics in tier-statistics)
+	xmlData := `<?xml version="1.0" encoding="UTF-8"?>
+<RESPONSE>
+	<OBJECT name="pool-statistics">
+		<PROPERTY name="pool">A</PROPERTY>
+		<PROPERTY name="serial-number">00c0ff640e37000089b7d26301000000</PROPERTY>
+		<OBJECT name="tier-statistics">
+			<PROPERTY name="tier">Performance</PROPERTY>
+			<PROPERTY name="pool">A</PROPERTY>
+			<PROPERTY name="serial-number">00c0ff640e37000089b7d26301000001</PROPERTY>
+			<OBJECT name="resettable-statistics">
+				<PROPERTY name="number-of-reads">643699762</PROPERTY>
+				<PROPERTY name="number-of-writes">1594098785</PROPERTY>
+				<PROPERTY name="data-read-numeric">87388675853312</PROPERTY>
+				<PROPERTY name="data-written-numeric">96356295811072</PROPERTY>
+				<PROPERTY name="avg-rsp-time">369</PROPERTY>
+				<PROPERTY name="avg-read-rsp-time">185</PROPERTY>
+				<PROPERTY name="avg-write-rsp-time">427</PROPERTY>
+			</OBJECT>
+		</OBJECT>
+	</OBJECT>
+</RESPONSE>`
+
+	var resp Response
+	if err := xml.Unmarshal([]byte(xmlData), &resp); err != nil {
+		t.Fatalf("Failed to parse XML: %v", err)
+	}
+
+	// Find tier-statistics object
+	tierStats := findObjects(resp.Objects, "tier-statistics")
+	if len(tierStats) != 1 {
+		t.Fatalf("Expected 1 tier-statistics object, got %d", len(tierStats))
+	}
+
+	// Test recursive property search
+	tests := []struct {
+		property string
+		expected string
+	}{
+		{"tier", "Performance"},                    // Direct property
+		{"number-of-reads", "643699762"},           // Nested in resettable-statistics
+		{"number-of-writes", "1594098785"},         // Nested in resettable-statistics
+		{"data-read-numeric", "87388675853312"},    // Nested in resettable-statistics
+		{"data-written-numeric", "96356295811072"}, // Nested in resettable-statistics
+		{"avg-rsp-time", "369"},                    // Nested in resettable-statistics
+		{"avg-read-rsp-time", "185"},               // Nested in resettable-statistics
+		{"avg-write-rsp-time", "427"},              // Nested in resettable-statistics
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.property, func(t *testing.T) {
+			value, ok := findProperty(tierStats[0], tt.property)
+			if !ok {
+				t.Errorf("Property %s not found in tier-statistics", tt.property)
+			}
+			if value != tt.expected {
+				t.Errorf("Property %s: expected %s, got %s", tt.property, tt.expected, value)
+			}
+		})
+	}
+}

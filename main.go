@@ -193,16 +193,35 @@ func findObjects(objects []Object, name string) []Object {
 			result = append(result, obj)
 		}
 		// Recursively search nested objects
-		result = append(result, findObjects(obj.Objects, name)...)
+		if len(obj.Objects) > 0 {
+			result = append(result, findObjects(obj.Objects, name)...)
+		}
 	}
 	return result
 }
 
-// Helper function to find property by name
+// Helper function to print XML structure for debugging
+func printXMLStructure(objects []Object, prefix string) {
+	for _, obj := range objects {
+		log.Printf("%sObject: %s (props: %d, nested: %d)", prefix, obj.Name, len(obj.Properties), len(obj.Objects))
+		if len(obj.Objects) > 0 {
+			printXMLStructure(obj.Objects, prefix+"  ")
+		}
+	}
+}
+
+// Helper function to find property by name (searches recursively in nested objects)
 func findProperty(obj Object, name string) (string, bool) {
+	// First check properties in current object
 	for _, prop := range obj.Properties {
 		if prop.Name == name {
 			return prop.Value, true
+		}
+	}
+	// Then search in nested objects recursively
+	for _, nestedObj := range obj.Objects {
+		if value, ok := findProperty(nestedObj, name); ok {
+			return value, true
 		}
 	}
 	return "", false
@@ -285,18 +304,24 @@ func scrapeMSA(client *MSAClient, metricStore *MetricStore) error {
 				continue
 			}
 
+			// Debug: print XML structure for pool-statistics
+			if debugMode && source.Path == "pool-statistics" && name == "tier_reads" {
+				log.Printf("DEBUG: XML structure for path %s:", source.Path)
+				printXMLStructure(resp.Objects, "  ")
+			}
+
 			// Find objects matching the selector
 			objects := findObjects(resp.Objects, source.ObjectSelector)
+			if debugMode && len(objects) == 0 {
+				log.Printf("DEBUG: No objects found for metric %s (path: %s, selector: %s)", name, source.Path, source.ObjectSelector)
+			}
 
-			// Special handling for complex selectors (like SSD-only disks)
-			if source.ObjectSelector == "drive" {
-				// Check for SSD architecture filter
+			// Special handling for complex selectors
+			if source.ObjectSelector == "drive" && name == "disk_ssd_life_left" {
+				// Check for SSD architecture filter - only for SSD life metric
 				filtered := []Object{}
 				for _, obj := range objects {
 					if arch, ok := findProperty(obj, "architecture"); ok && arch == "SSD" {
-						filtered = append(filtered, obj)
-					} else if arch == "" {
-						// No filter, include all
 						filtered = append(filtered, obj)
 					}
 				}
@@ -317,6 +342,9 @@ func scrapeMSA(client *MSAClient, metricStore *MetricStore) error {
 				// Find the value
 				value, ok := findProperty(obj, source.PropertySelector)
 				if !ok {
+					if debugMode {
+						log.Printf("DEBUG: Property %s not found for metric %s", source.PropertySelector, name)
+					}
 					continue
 				}
 
@@ -352,6 +380,8 @@ func scrapeMSA(client *MSAClient, metricStore *MetricStore) error {
 	return nil
 }
 
+var debugMode bool
+
 func main() {
 	// Parse command line arguments
 	hostname := flag.String("hostname", "", "MSA storage hostname")
@@ -360,6 +390,7 @@ func main() {
 	port := flag.Int("port", 8000, "Exporter port")
 	interval := flag.Int("interval", 60, "Scrape interval in seconds")
 	timeout := flag.Int("timeout", 60, "Scrape timeout in seconds")
+	flag.BoolVar(&debugMode, "debug", false, "Enable debug logging")
 
 	flag.Parse()
 
