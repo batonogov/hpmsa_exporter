@@ -10,6 +10,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -368,6 +369,32 @@ func main() {
 		*hostname = args[0]
 		*login = args[1]
 		*password = args[2]
+	}
+
+	// Read from environment variables if flags are not set
+	if *hostname == "" {
+		*hostname = os.Getenv("HOST")
+	}
+	if *login == "" {
+		*login = os.Getenv("LOGIN")
+	}
+	if *password == "" {
+		*password = os.Getenv("PASSWORD")
+	}
+	if portEnv := os.Getenv("PORT"); portEnv != "" && *port == 8000 {
+		if p, err := strconv.Atoi(portEnv); err == nil {
+			*port = p
+		}
+	}
+	if intervalEnv := os.Getenv("INTERVAL"); intervalEnv != "" && *interval == 60 {
+		if i, err := strconv.Atoi(intervalEnv); err == nil {
+			*interval = i
+		}
+	}
+	if timeoutEnv := os.Getenv("TIMEOUT"); timeoutEnv != "" && *timeout == 60 {
+		if t, err := strconv.Atoi(timeoutEnv); err == nil {
+			*timeout = t
+		}
 	}
 
 	if *hostname == "" || *login == "" || *password == "" {

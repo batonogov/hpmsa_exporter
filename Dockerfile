@@ -38,5 +38,4 @@ USER exporter
 
 EXPOSE 8000
 
-ENTRYPOINT ["./msa_exporter"]
-CMD ["-hostname", "$HOST", "-login", "$LOGIN", "-password", "$PASSWORD"]
+CMD ./msa_exporter -hostname $HOST -login $LOGIN -password $PASSWORD
