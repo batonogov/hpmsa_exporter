@@ -534,3 +534,140 @@ func TestRecursiveFindProperty(t *testing.T) {
 		})
 	}
 }
+
+// Test printXMLStructure - mainly for coverage
+func TestPrintXMLStructure(t *testing.T) {
+	objects := []Object{
+		{
+			Name: "parent",
+			Properties: []Property{
+				{Name: "prop1", Value: "val1"},
+			},
+			Objects: []Object{
+				{
+					Name: "child",
+					Properties: []Property{
+						{Name: "prop2", Value: "val2"},
+					},
+				},
+			},
+		},
+	}
+
+	// Just call the function to ensure it doesn't panic
+	printXMLStructure(objects, "")
+}
+
+// Test NewMSAClient error cases
+func TestNewMSAClientErrors(t *testing.T) {
+	t.Run("invalid XML response", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`invalid xml`))
+		}))
+		defer server.Close()
+
+		host := server.URL[8:]
+		_, err := NewMSAClient(host, "test", "test", 10*time.Second)
+		if err == nil {
+			t.Error("Expected error for invalid XML response")
+		}
+	})
+
+	t.Run("missing session key in response", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<RESPONSE>
+	<OBJECT name="status">
+		<PROPERTY name="other">value</PROPERTY>
+	</OBJECT>
+</RESPONSE>`))
+		}))
+		defer server.Close()
+
+		host := server.URL[8:]
+		_, err := NewMSAClient(host, "test", "test", 10*time.Second)
+		if err == nil {
+			t.Error("Expected error for missing session key")
+		}
+		if err != nil && err.Error() != "session key not found in response" {
+			t.Errorf("Expected 'session key not found in response', got '%v'", err)
+		}
+	})
+
+	t.Run("authentication with non-OK status", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		}))
+		defer server.Close()
+
+		host := server.URL[8:]
+		_, err := NewMSAClient(host, "test", "test", 10*time.Second)
+		if err == nil {
+			t.Error("Expected error for non-OK status")
+		}
+	})
+}
+
+// Test scrapeMSA error cases
+func TestScrapeMSAErrors(t *testing.T) {
+	t.Run("version fetch failure", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/login/"+getSHA256("testerr1_testerr1") {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<RESPONSE>
+	<OBJECT name="status">
+		<PROPERTY name="response">test-key</PROPERTY>
+	</OBJECT>
+</RESPONSE>`))
+			} else if r.URL.Path == "/api/show/version" {
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}))
+		defer server.Close()
+
+		host := server.URL[8:]
+		client, err := NewMSAClient(host, "testerr1", "testerr1", 10*time.Second)
+		if err != nil {
+			t.Fatalf("Failed to create client: %v", err)
+		}
+
+		ms := NewMetricStore()
+		err = scrapeMSA(client, ms)
+		if err == nil {
+			t.Error("Expected error when version fetch fails")
+		}
+	})
+
+	t.Run("invalid version XML", func(t *testing.T) {
+		server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/login/"+getSHA256("testerr2_testerr2") {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<RESPONSE>
+	<OBJECT name="status">
+		<PROPERTY name="response">test-key</PROPERTY>
+	</OBJECT>
+</RESPONSE>`))
+			} else if r.URL.Path == "/api/show/version" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`invalid xml`))
+			}
+		}))
+		defer server.Close()
+
+		host := server.URL[8:]
+		client, err := NewMSAClient(host, "testerr2", "testerr2", 10*time.Second)
+		if err != nil {
+			t.Fatalf("Failed to create client: %v", err)
+		}
+
+		ms := NewMetricStore()
+		err = scrapeMSA(client, ms)
+		if err == nil {
+			t.Error("Expected error when version XML is invalid")
+		}
+	})
+}
